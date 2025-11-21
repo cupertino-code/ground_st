@@ -1,0 +1,12 @@
+cmake_minimum_required(VERSION 3.14)
+project(GroundStation VERSION 1.0)
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(GTKMM REQUIRED gtkmm-3.0)
+pkg_check_modules(GSTREAMERMM REQUIRED gstreamermm-1.0)
+pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0 gstreamer-app-1.0 gstreamer-video-1.0)
+add_subdirectory(src/guicore)
+add_subdirectory(src/app)
+add_subdirectory(src/crsf2net)
+add_subdirectory(src/libmisc)
+add_subdirectory(src/control)
