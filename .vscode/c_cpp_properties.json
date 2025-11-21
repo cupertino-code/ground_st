@@ -1,0 +1,40 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/src/**",
+                 "${workspaceFolder}/src/app/**",
+                 "${workspaceFolder}/src/guicore/**",
+                 "${workspaceFolder}/src/libmisc/**",
+                 "${workspaceFolder}/src/libmisc/include/**",
+                 "${workspaceFolder}/src/crsf2net/**",
+                 "${workspaceFolder}/src/crsf2net/include/**",
+                 "${workspaceFolder}/src/control/**",
+                 "${workspaceFolder}/src/control/include/**"
+            ],
+            "defines": [],
+            "intelliSenseMode": "gcc-x64",
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/src/app/*",
+                    "${workspaceFolder}/src/guicore/*",
+                    "${workspaceFolder}/src/libmisc/*",
+                    "${workspaceFolder}/src/libmisc/include/**",
+                    "${workspaceFolder}/src/crsf2net/*",
+                    "${workspaceFolder}/src/crsf2net/include/*",
+                    "${workspaceFolder}/src/control/**",
+                    "${workspaceFolder}/src/control/include/**"
+                ],
+                "limitSymbolsToIncludedHeaders": true,
+                "databaseFilename": ""
+            },
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "configurationProvider": "vector-of-bool.cmake-tools"
+        }
+    ],
+    "version": 4
+}
+
