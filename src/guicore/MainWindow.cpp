@@ -382,6 +382,22 @@ bool MainWindow::on_bus_message(const Glib::RefPtr<Gst::Bus>& bus, const Glib::R
 bool MainWindow::on_key_press_event(GdkEventKey* event)
 {
     switch (event->keyval) {
+        case GDK_KEY_Left:
+            m_status.encoder_cnt -= ENCODER_INCREMENT;
+            if (event->state & Gdk::CONTROL_MASK)
+                SET_BIT(m_status.switch_status, SWITCH_ENCODER_NUM);
+            else
+                CLEAR_BIT(m_status.switch_status, SWITCH_ENCODER_NUM);
+            control_send_message();
+            return true;
+        case GDK_KEY_Right:
+            m_status.encoder_cnt += ENCODER_INCREMENT;
+            if (event->state & Gdk::CONTROL_MASK)
+                SET_BIT(m_status.switch_status, SWITCH_ENCODER_NUM);
+            else
+                CLEAR_BIT(m_status.switch_status, SWITCH_ENCODER_NUM);
+            control_send_message();
+            return true;
         case GDK_KEY_F5:
             on_record_clicked();
             return true;
@@ -449,17 +465,18 @@ void MainWindow::on_left_fast_clicked()
     SET_BIT(m_status.switch_status, SWITCH_ENCODER_NUM);
     m_status.encoder_cnt -= ENCODER_INCREMENT;
     control_send_message();
-    CLEAR_BIT(m_status.switch_status, SWITCH_ENCODER_NUM);
 }
 
 void MainWindow::on_left_clicked()
 {
+    CLEAR_BIT(m_status.switch_status, SWITCH_ENCODER_NUM);
     m_status.encoder_cnt -= ENCODER_INCREMENT;
     control_send_message();
 }
 
 void MainWindow::on_right_clicked()
 {
+    CLEAR_BIT(m_status.switch_status, SWITCH_ENCODER_NUM);
     m_status.encoder_cnt += ENCODER_INCREMENT;
     control_send_message();
 }
@@ -469,7 +486,6 @@ void MainWindow::on_right_fast_clicked()
     SET_BIT(m_status.switch_status, SWITCH_ENCODER_NUM);
     m_status.encoder_cnt += ENCODER_INCREMENT;
     control_send_message();
-    CLEAR_BIT(m_status.switch_status, SWITCH_ENCODER_NUM);
 }
 
 void MainWindow::update_status(void)
