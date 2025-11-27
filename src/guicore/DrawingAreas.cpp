@@ -175,24 +175,6 @@ bool VRXDrawArea::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     buffer_context->get_text_extents(buf, te);
     buffer_context->move_to(20 - te.x_bearing, y - te.y_bearing);
     buffer_context->show_text(buf);
-    buffer_context->set_source_rgb(0.8, 0.8, 0.8);
-    sprintf(buf, "%ld of %ld", m_status->rc_packets_good, m_status->rc_packets);
-    buffer_context->move_to(10, height - 50);
-    buffer_context->show_text(buf);
-    sprintf(buf, "%ld/errs %ld", m_status->rc_bytes, m_status->rc_errs);
-    buffer_context->move_to(10, height - 30);
-    buffer_context->show_text(buf);
-    if (m_status->updated) {
-        if (m_status->recording) {
-            buffer_context->set_source_rgb(0.8, 0.1, 0.1);
-            buffer_context->move_to(10, height - 10);
-            buffer_context->show_text("RECORDING...");
-        } else {
-            buffer_context->set_source_rgb(0.1, 0.5, 0.1); // Green
-            buffer_context->move_to(10, height - 10);
-            buffer_context->show_text("Ready");
-        }
-    }
     y += te.height + 10;                                                                                                                                                                            
     if (m_status->connect_status && m_status->updated && temp_lp) {
         strcpy(buf, "LOW POWER");
