@@ -72,7 +72,6 @@ MainWindow::MainWindow() :
     signal(SIGTERM, signal_handler);
     set_default_size(VIDEO_WIDTH + 200, VIDEO_HEIGHT);
 
-    // 1. Setup Buttons
     m_ButtonRecord.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_record_clicked));
     m_ButtonPower.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_power_clicked));
     m_ButtonQuit.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_quit_clicked));
@@ -84,7 +83,6 @@ MainWindow::MainWindow() :
     m_btn_left.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_left_clicked));
     m_btn_right.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_right_clicked));
     m_btn_right_fast.signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_right_fast_clicked));
-//    m_btn_left.add_pixlabel();
     m_ButtonBox.pack_start(m_ButtonRecord, Gtk::PACK_EXPAND_WIDGET);
     m_ButtonBox.pack_start(m_ButtonPower, Gtk::PACK_EXPAND_WIDGET);
     m_ButtonBox.pack_start(m_ButtonQuit, Gtk::PACK_EXPAND_WIDGET);
