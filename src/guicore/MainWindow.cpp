@@ -382,6 +382,15 @@ bool MainWindow::on_bus_message(const Glib::RefPtr<Gst::Bus>& bus, const Glib::R
 bool MainWindow::on_key_press_event(GdkEventKey* event)
 {
     switch (event->keyval) {
+        case GDK_KEY_f:
+        case GDK_KEY_F:
+            if (event->state & Gdk::CONTROL_MASK) {
+                unsigned int size = VRX_TABLE_COUNT;
+                get_table_info(m_status.vrx_table, &size);
+                m_status.bands = size;
+                crsf_send_vrxtable();
+                return true;
+            }
         case GDK_KEY_Left:
             m_status.encoder_cnt -= ENCODER_INCREMENT;
             if (event->state & Gdk::CONTROL_MASK)
@@ -406,7 +415,6 @@ bool MainWindow::on_key_press_event(GdkEventKey* event)
                 m_StatusGrid.show();
             else
                 m_StatusGrid.hide();
-                printf("Hide grid\n");
             return true;
         case GDK_KEY_F11: {
             Gdk::WindowState state = get_window()->get_state();
