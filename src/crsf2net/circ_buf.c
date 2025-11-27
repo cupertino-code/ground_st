@@ -11,6 +11,15 @@ struct circular_buf *cbuf_init(struct circular_buf *cbuf, uint8_t *buffer, size_
     return cbuf;
 }
 
+void cbuf_destroy(struct circular_buf *cbuf)
+{
+    if (cbuf->buffer)
+        free(cbuf->buffer);
+    cbuf->buffer = NULL;
+    cbuf->max = 0;
+    cbuf->item_size = 0;
+}
+
 void cbuf_reset(struct circular_buf *cbuf)
 {
     cbuf->head = 0;
