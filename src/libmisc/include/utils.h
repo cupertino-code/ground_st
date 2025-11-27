@@ -19,6 +19,16 @@ uint8_t crc8_data(const uint8_t *data, uint8_t len);
 extern "C" {
 #endif
 
+#ifndef SO_PRIORITY
+#define SO_PRIORITY 12
+#endif
+#ifndef CLOCK_MONOTONIC
+#define CLOCK_MONOTONIC 1
+#endif
+#ifndef SO_REUSEPORT
+#define SO_REUSEPORT 15
+#endif
+
 inline uint64_t get_timestamp()
 {
     struct timespec ts;
