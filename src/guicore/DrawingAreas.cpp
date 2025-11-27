@@ -222,6 +222,28 @@ bool VRXDrawArea::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
             }
         }
     }
+    pthread_mutex_lock(&m_status->mutex);
+    static char *prev_status = NULL;
+
+    if (m_status->status_line != prev_status) {
+        printf("New status %s\n", m_status->status_line);
+        prev_status = m_status->status_line;
+    }
+    if (m_status->status_line && strlen(m_status->status_line)) {
+        switch (m_status->status_severity) {
+            case SEVERITY_ERROR:
+                buffer_context->set_source_rgb(0.8, 0.1, 0.1);
+                break;
+            case SEVERITY_WARN:
+                buffer_context->set_source_rgb(0.8, 0.8, 0.1);
+                break;
+            default:
+                buffer_context->set_source_rgb(0.1, 0.5, 0.1);
+        }
+        buffer_context->move_to(10, height - 10);
+        buffer_context->show_text(m_status->status_line ? m_status->status_line : "");
+    }
+    pthread_mutex_unlock(&m_status->mutex);
 
     cr->set_source(m_buffer_surface, 0, 0);
     cr->paint();

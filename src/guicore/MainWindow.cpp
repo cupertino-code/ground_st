@@ -64,6 +64,7 @@ MainWindow::MainWindow() :
     set_default_size(VIDEO_WIDTH+200, VIDEO_HEIGHT+200);
 
     memset(&m_status, 0, sizeof(m_status));
+    pthread_mutex_init(&m_status.mutex, NULL);
     m_DrawingArea.set_status_ptr(&m_status);
     m_BottomDrawingArea.set_status_ptr(&m_status);
     // Setup Signals
@@ -138,6 +139,7 @@ MainWindow::MainWindow() :
     }
     control_start(&m_status, &m_app_config);
     crsf_start(&m_status, &m_app_config);
+    set_status_line(SEVERITY_NOTIFICATION, "Ready");
 }
 
 MainWindow::~MainWindow()
@@ -286,6 +288,7 @@ void MainWindow::start_recording()
     m_status.recording = true;
     std::cout << "Started recording to: " << filename << std::endl;
     m_ButtonRecord.set_label("Stop Recording");
+    set_status_line(SEVERITY_WARN, "Recording");
 }
 
 void MainWindow::stop_recording()
@@ -301,6 +304,7 @@ void MainWindow::stop_recording()
 
     // Set a timeout to clean up after EOS has time to propagate
     Glib::signal_timeout().connect_once(sigc::mem_fun(*this, &MainWindow::cleanup_recording_branch), 100);
+    set_status_line(SEVERITY_NOTIFICATION, "Ready");
 }
 
 void MainWindow::cleanup_recording_branch()
@@ -499,6 +503,20 @@ void MainWindow::update_status(void)
     Glib::signal_timeout().connect(sigc::mem_fun(*this, &MainWindow::on_update_status), 100);
 }
 
+void MainWindow::set_status_line(int severity, const char *status)
+{
+    pthread_mutex_lock(&m_status.mutex);
+    if (m_status.status_line)
+        free(m_status.status_line);
+    if (status)
+        m_status.status_line = strdup(status);
+    else
+        m_status.status_line = NULL;
+    m_status.status_severity = severity;
+
+    pthread_mutex_unlock(&m_status.mutex);
+}
+
 bool MainWindow::on_update_status(void)
 {
     if (CHECK_BIT(m_status.power_status, POWER_BIT)) {
@@ -509,8 +527,17 @@ bool MainWindow::on_update_status(void)
     return false;
 }
 
-extern "C" void update_status(void)
+extern "C" {
+void update_status(void)
 {
     if (global_window_ptr)
         global_window_ptr->update_status();
+}
+
+void set_status_line(int severity, const char *status)
+{
+    if (global_window_ptr) {
+        global_window_ptr->set_status_line(severity, status);
+    }
+}
 }

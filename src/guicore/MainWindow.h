@@ -23,6 +23,7 @@ public:
     MainWindow();
     virtual ~MainWindow();
     void update_status(void);
+    void set_status_line(int severity, const char *status);
 protected:
     bool on_key_press_event(GdkEventKey* event) override;
 private:
