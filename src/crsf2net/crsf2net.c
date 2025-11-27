@@ -23,6 +23,7 @@
 #include "config.h"
 #include "control.h"
 #include "crsf2net.h"
+#include "main_update.h"
 
 #define UART_DEVICE "/dev/ttyS0"
 #define BAUD_RATE 115200
@@ -44,9 +45,10 @@ struct crsf_cfg {
     int ip_port;
     char *uart;
     int baudrate;
+    struct circular_buf cbuf;
 };
 
-typedef void (*process_func_t)(int uart_fd, int udp_sock, const char *ip_addr, uint16_t udp_port);
+typedef void (*process_func_t)(int uart_fd, int udp_sock, struct circular_buf *cbuf, const char *ip_addr, uint16_t udp_port);
 
 static process_func_t process_connection_func = NULL;
 static int extra_messages_cnt = 0;
@@ -77,13 +79,11 @@ struct parser_state {
 
 struct parser_state net_parser;
 struct parser_state uart_parser;
-struct circular_buf cbuf;
+
 struct cbuf_item {
     uint8_t buf[CRSF_MAX_PACKET_SIZE];
     size_t len;
 };
-
-//struct shared_memory shm;
 
 #define CBUF_NUM 3
 
@@ -91,63 +91,31 @@ struct cbuf_item {
 static volatile int run;
 static pthread_t crsf_thread;
 
-static void message_dump(int num, uint8_t *buf, int len)
-{
-    int count = 0;
-    printf("Message %d, len %d: ", num, len);
-    for (int i = 0; i < len; i++) {
-        if (count == 16) {
-            count = 0;
-            puts("");
-        }
-        printf(" %02x", buf[i]);
-    }
-    puts("");
-}
-#if 0
 static void prepare_extra_messages()
 {
-    struct shared_buffer *shbuf;
     uint16_t *table;
 
-    if (!shm.ptr)
-        return;
     if (extra_messages_cnt)
         return;
-    shbuf = (struct shared_buffer *)shm.ptr;
-    for (int band = 0; band < shbuf->bands; band++) {
+    for (int band = 0; band < global_status_ptr->bands; band++) {
         extra_messages[band][0] = 0xee;  // Address
         extra_messages[band][1] = 1 + 2 + 1 + 16 * 2 + 1;  // Msg len
                                                     //type(1) MCP header(2) + band(1) + vrx_table(16*2) + CRC(1)
         extra_messages[band][2] = 0x7a;  // Type MCP
         extra_messages[band][3] = 0xc8;  // MCP header
         extra_messages[band][4] = 0x00;  // MCP ID
-        extra_messages[band][5] = shbuf->vrx_table[band].band;
+        extra_messages[band][5] = global_status_ptr->vrx_table[band].band;
         table = (uint16_t *)&extra_messages[band][6];
         for (int i = 0; i < 16; i++)
-            table[i] = shbuf->vrx_table[band].table[i];
+            table[i] = global_status_ptr->vrx_table[band].table[i];
         uint8_t crc = crc8_data(&extra_messages[band][2], 1 + 2 + 1 + 16 * 2);
         extra_messages[band][6+32] = crc;
         extra_message_len[band] = 6 + 32 + 1;
     }
-    extra_messages_cnt = shbuf->bands;
+    extra_messages_cnt = global_status_ptr->bands;
 }
 
-void sigint_handler(int sig)
-{
-    if (sig == SIGINT) {
-        printf("\nGot signal SIGINT (Ctrl+C). Exiting...\n");
-        run = 0;
-        if (sock && *sock) {
-            close(*sock);
-            sock = NULL;
-        }
-    } else if (sig == SIGUSR1) {
-        prepare_extra_messages();
-    }
-}
-#endif
-#if 0
+#if 1
 static int setup_uart(const char *device, int MAYBE_UNUSED baud_rate)
 {
     int uart_fd;
@@ -162,13 +130,12 @@ static int setup_uart(const char *device, int MAYBE_UNUSED baud_rate)
         uart_fd = open(device, O_RDWR | O_NOCTTY | O_SYNC);
         if (uart_fd < 0) {
             perror("Error opening UART");
-            if (errno == ENOENT || errno == ENODEV || errno == EPERM) {
-                sleep(2);
-                continue;
-            }
-            return -1;
+            set_status_line(SEVERITY_ERROR, "Can't access RC");
+            sleep(2);
+            continue;
         }
         if (tcgetattr(uart_fd, &tty_config) != 0) {
+            set_status_line(SEVERITY_ERROR, "Can't access RC");
             perror("Error tcgetattr");
             close(uart_fd);
             return -1;
@@ -180,6 +147,7 @@ static int setup_uart(const char *device, int MAYBE_UNUSED baud_rate)
         tty_config.c_lflag = 0;
         tcflush(uart_fd, TCIFLUSH);
         if (tcsetattr(uart_fd, TCSANOW, &tty_config) != 0) {
+            set_status_line(SEVERITY_ERROR, "Can't access RC");
             perror("Error tcsetattr");
             close(uart_fd);
             return -1;
@@ -192,10 +160,13 @@ static int setup_uart(const char *device, int MAYBE_UNUSED baud_rate)
         } else {
             perror("UART: Get descriptor flags");
         }
-//        if (verbose)
+        if (verbose)
             printf("UART configured on %s with baud rate %d\n", device, baud_rate);
+        if (try > 1)
+            set_status_line(SEVERITY_NOTIFICATION, "Ready");
         return uart_fd;
     }
+    return -1;
 }
 #else
 static int setup_uart(const char *device, int baud_rate)
@@ -283,7 +254,6 @@ static int parser(struct parser_state *parser, uint8_t byte)
             printf("diff ts: %ld state %d\n", timestamp - last_timestamp, parser->state);
             parser->state = STATE_SOURCE;
             parser->errs++;
-            global_status_ptr->rc_errs++;
         }
     }
     last_timestamp = timestamp;
@@ -353,12 +323,11 @@ static void process_rc_packet(struct parser_state *parser)
         if (parser->type == 0x16 && parser->payload_length >= 22) {
             memcpy(&global_status_ptr->channels, parser->payload, parser->payload_length);
             global_status_ptr->channels_updated = 1;  // Indicate new data available
-            global_status_ptr->rc_packets_good++;
         }
     }
 }
 
-static void process_connection_rc(int uart_fd, int udp_sock, const char *ip_addr, uint16_t udp_port)
+static void process_connection_rc(int uart_fd, int udp_sock, struct circular_buf *cbuf, const char *ip_addr, uint16_t udp_port)
 {
     char buffer[BUFFER_SIZE];
     ssize_t bytes_read;
@@ -408,8 +377,6 @@ static void process_connection_rc(int uart_fd, int udp_sock, const char *ip_addr
                     perror("Error reading from UART");
                 return;
             }
-            global_status_ptr->rc_bytes += bytes_read;
-//            message_dump(global_status_ptr->rc_bytes, buffer, bytes_read);
             for (int i = 0; i < bytes_read; i++) {
                 int packet_length = parser(&uart_parser, buffer[i]);
                 uint8_t *buf;
@@ -417,24 +384,19 @@ static void process_connection_rc(int uart_fd, int udp_sock, const char *ip_addr
 
                 if (!packet_length)
                     continue;
-#if 0
                 if (_unlikely(extra_messages_cnt)) {
                     if (index < 0)
                         index = 0;
                     if (index < extra_messages_cnt) {
-                        printf("extra messages: %d of %d\n", index + 1, extra_messages_cnt);
                         sendto(udp_sock, extra_messages[index], extra_message_len[index], 0,
                                 (struct sockaddr *)&to, sizeof(to));
-                        message_dump(index, extra_messages[index], extra_message_len[index]);
                         index++;
                         continue;
                     }
                     extra_messages_cnt = 0;
-                    ((struct shared_buffer *)shm.ptr)->bands = 0;
+                    global_status_ptr->bands = 0;
                     index = -1;
                 }
-#endif
-                global_status_ptr->rc_packets++;
                 if (sendto(udp_sock, uart_parser.buffer, uart_parser.length, 0,
                             (struct sockaddr *)&to, sizeof(to)) < 0) {
                     perror("Error sending over UDP");
@@ -444,13 +406,13 @@ static void process_connection_rc(int uart_fd, int udp_sock, const char *ip_addr
                     process_rc_packet(&uart_parser);
                 }
                 if (verbose) {
-//                    printf("UART -> UDP: sent %d bytes\n", uart_parser.length);
+                    printf("UART -> UDP: sent %d bytes\n", uart_parser.length);
                     if (verbose > 1)
                         dump("UART data", uart_parser.buffer, uart_parser.length);
                 }
-                if (cbuf_empty(&cbuf))
+                if (cbuf_empty(cbuf))
                     continue;
-                buf = cbuf_get_ptr(&cbuf);
+                buf = cbuf_get_ptr(cbuf);
                 if (verbose) {
                     printf("Writing to UART %d bytes\n", buf[1]);
                     if (verbose > 1)
@@ -458,7 +420,7 @@ static void process_connection_rc(int uart_fd, int udp_sock, const char *ip_addr
                 }
                 bytes_written = write(uart_fd, buf, buf[1] + 2);
                 if (bytes_written > 0) {
-                    cbuf_drop(&cbuf);
+                    cbuf_drop(cbuf);
                     continue;
                 }
                 if (!bytes_written) {
@@ -484,7 +446,7 @@ static void process_connection_rc(int uart_fd, int udp_sock, const char *ip_addr
                 int len = parser(&net_parser, buffer[i]);
                 if (len <= 0)
                     continue;
-                cbuf_put(&cbuf, net_parser.buffer);
+                cbuf_put(cbuf, net_parser.buffer);
                 if (verbose) {
                     printf("UDP(from %s): received %d bytes\n", inet_ntoa(from.sin_addr),
                             net_parser.length);
@@ -500,7 +462,7 @@ static void process_connection_rc(int uart_fd, int udp_sock, const char *ip_addr
     close(udp_sock);
 }
 
-static int main_loop(char *peer_ip, uint16_t udp_port, const char *dev, int baudrate)
+static int main_loop(char *peer_ip, uint16_t udp_port, struct circular_buf *cbuf, const char *dev, int baudrate)
 {
     struct sockaddr_in sock_addr;
     int udp_sock;
@@ -543,7 +505,7 @@ static int main_loop(char *peer_ip, uint16_t udp_port, const char *dev, int baud
             run = 0;
             break;
         }
-        process_connection_func(uart_fd, udp_sock, peer_ip, udp_port);
+        process_connection_func(uart_fd, udp_sock, cbuf, peer_ip, udp_port);
         close(udp_sock);
         close(uart_fd);
     }
@@ -558,7 +520,8 @@ static void *crsf_thread_func(void *arg)
     int uart_fd;
     if (!arg)
         return NULL;
-    main_loop(cfg->ip_addr, cfg->ip_port, cfg->uart, cfg->baudrate);
+    main_loop(cfg->ip_addr, cfg->ip_port, &cfg->cbuf, cfg->uart, cfg->baudrate);
+    cbuf_destroy(&cfg->cbuf);
     free(arg);
     return NULL;
 }
@@ -566,6 +529,7 @@ static void *crsf_thread_func(void *arg)
 int crsf_start(global_status_t *status_ptr, app_config_t *app_config)
 {
     struct crsf_cfg *cfg;
+    uint8_t *cbuffers;
 
     cfg = malloc(sizeof(struct crsf_cfg));
     if (!cfg)
@@ -576,6 +540,8 @@ int crsf_start(global_status_t *status_ptr, app_config_t *app_config)
     cfg->baudrate = app_config->baudrate;
     global_status_ptr = status_ptr;
     process_connection_func = process_connection_rc;
+    cbuffers = (uint8_t *)malloc(CRSF_MAX_PACKET_SIZE * CBUF_NUM * sizeof(uint8_t));
+    cbuf_init(&cfg->cbuf, cbuffers, CBUF_NUM, CRSF_MAX_PACKET_SIZE * sizeof(uint8_t));
     run = 1;
     return pthread_create(&crsf_thread, NULL, crsf_thread_func, (void *)cfg);
 }
@@ -586,4 +552,9 @@ void crsf_stop(void)
     printf("Wait for crsf finish\n");
     pthread_join(crsf_thread, NULL);
     printf("Crsf finished\n");
+}
+
+void crsf_send_vrxtable(void)
+{
+    prepare_extra_messages();
 }
