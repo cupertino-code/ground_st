@@ -131,10 +131,10 @@ typedef struct app_config {
 } app_config_t;
 
 #define VRX_TABLE_COUNT 8
-struct vrx_table {
+typedef struct vrx_table {
     uint8_t band;
     uint16_t table[16];
-};
+} vrx_table_t;
 
 int load_config(const char *conf_name);
 int get_chan_info(crsf_channels_t *crsf, struct channel_data *data, unsigned int *size);
