@@ -1,7 +1,12 @@
 #pragma once
+#include <pthread.h>
 #include "crsf_protocol.h"
 #include "config.h"
 #include "common.h"
+
+#define SEVERITY_NOTIFICATION  0
+#define SEVERITY_WARN 1
+#define SEVERITY_ERROR 2
 
 typedef struct global_status {
     int updated;
@@ -14,10 +19,11 @@ typedef struct global_status {
     int recording;
     int channels_updated;
     crsf_channels_t channels;
-    uint64_t rc_packets_good;
-    uint64_t rc_packets;
-    uint64_t rc_bytes;
-    uint64_t rc_errs;
+    int bands;
+    vrx_table_t vrx_table[VRX_TABLE_COUNT];
+    pthread_mutex_t mutex;
+    int status_severity;
+    char *status_line;
 } global_status_t;
 
 #if defined(cplusplus) || defined(__cplusplus)
