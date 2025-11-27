@@ -3,6 +3,6 @@
         "crsf_protocol.h": "c",
         "protocol.h": "c",
         "control.h": "c",
-        "fstream": "cpp"
+        "utils.h": "c"
     }
 }
