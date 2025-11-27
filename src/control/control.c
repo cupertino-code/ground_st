@@ -32,8 +32,9 @@ struct control_config {
 };
 
 static struct control_config ctl_cfg;
-//static struct antenna_status antenna_status;
 static global_status_t *global_status_ptr = NULL;
+static pthread_t control_thread;
+
 #define BUFFER_SIZE 100
 #define STATUS_TIMEOUT 2000
 
@@ -44,9 +45,7 @@ void control_send_message()
     struct rotator_command *command = (struct rotator_command *)&msg->payload;
     uint8_t *crc = buffer + sizeof(struct rotator_protocol) + sizeof(struct rotator_command);
 
-    if (!global_status_ptr->connect_status)
-        return;
-    if (ctl_cfg.client_sock < 0)
+    if (!global_status_ptr->connect_status || ctl_cfg.client_sock < 0)
         return;
     msg->start_byte = PROTOCOL_START_BYTE;
     msg->version = PROTOCOL_VERSION;
@@ -290,12 +289,9 @@ static void *control_thread_func(void *arg)
     return NULL;
 }
 
-static pthread_t control_thread;
-extern int verbose;
 int control_start(global_status_t *status_ptr, app_config_t *app_config)
 {
     ctl_cfg.run = 1;
-    verbose = 1;
     ctl_cfg.status = status_ptr;
     global_status_ptr = status_ptr;
     ctl_cfg.tcp_port = app_config->ctl_port;
