@@ -238,7 +238,8 @@ void MainWindow::start_recording()
     if (m_status.recording) return;
 
     // Use a fixed path for simplicity, mirroring the spirit of MOUNT_HELPER_PATH
-    std::string mount_point = "/tmp";
+    std::string mount_point = getenv("HOME");
+    mount_point += "/Recordings";
 
     // Generate filename with timestamp
     std::time_t t = std::time(nullptr);
