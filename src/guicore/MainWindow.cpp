@@ -385,6 +385,24 @@ bool MainWindow::on_bus_message(const Glib::RefPtr<Gst::Bus>& bus, const Glib::R
     return true;
 }
 
+void MainWindow::show_help_dialog()
+{
+    Gtk::MessageDialog dialog( *this, "Довідка про Програму", // Заголовок
+        false,             // use_markup (ні)
+        Gtk::MESSAGE_INFO, // Тип повідомлення (іконка)
+        Gtk::BUTTONS_CLOSE // Кнопки: лише "Закрити" (Close)
+    );
+    dialog.set_secondary_text( "Довідка.\n"
+        "Натисніть 'Закрити', щоб повернутися до основної програми.\n"
+        "Кнопки вліво/вправо - повернення антени вліво-вправо приблизно на 1 градус\n"
+        "Кнопки вліво/вправо з натиснутим Ctrl - повернення антени вліво-вправо приблизно на 4 градуси\n"
+        "F5 - Почати/завершити запис відео\n"
+        "F9 - Показати/сховати праву панель в повноекранному режимі\n"
+        "F11 - Вхід/вихід повноекранний режим\n"
+    );
+    dialog.run();
+}
+
 bool MainWindow::on_key_press_event(GdkEventKey* event)
 {
     switch (event->keyval) {
@@ -412,6 +430,9 @@ bool MainWindow::on_key_press_event(GdkEventKey* event)
             else
                 CLEAR_BIT(m_status.switch_status, SWITCH_ENCODER_NUM);
             control_send_message();
+            return true;
+        case GDK_KEY_F1:
+            show_help_dialog();
             return true;
         case GDK_KEY_F5:
             on_record_clicked();

@@ -50,6 +50,7 @@ private:
     // --- Private Methods ---
     void setup_pipeline();
     void set_video_overlay();
+    void show_help_dialog();
 
     // Button Handlers
     void on_record_clicked();
