@@ -14,7 +14,7 @@
 MainWindow *global_window_ptr = nullptr;
 const int VIDEO_WIDTH = 720;
 const int VIDEO_HEIGHT = 576;
-#define CONFIG_FILE "/home/code/vrxtbl.yaml"
+#define CONFIG_FILE "vrxtbl.yaml"
 
 // --- GStreamer Helper ---
 GstElement* make_gst_element(const char* plugin, const char* name) {
@@ -124,7 +124,10 @@ MainWindow::MainWindow() :
     add(m_VBox);
     show_all_children();
     Glib::signal_timeout().connect(sigc::mem_fun(*this, &MainWindow::on_redraw_timeout), 200);
-    load_config(CONFIG_FILE);
+    char conf_name[PATH_MAX];
+    sprintf(conf_name, "%s/%s", getenv("HOME"), CONFIG_FILE);
+    printf("Config: %s\n", conf_name);
+    load_config(conf_name);
     std::memset(&m_app_config, 0, sizeof(m_app_config));
     get_app_config(&m_app_config);
     setup_pipeline();
