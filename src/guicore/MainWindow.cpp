@@ -397,6 +397,7 @@ void MainWindow::show_help_dialog()
         "Кнопки вліво/вправо - повернення антени вліво-вправо приблизно на 1 градус\n"
         "Кнопки вліво/вправо з натиснутим Ctrl - повернення антени вліво-вправо приблизно на 4 градуси\n"
         "F5 - Почати/завершити запис відео\n"
+        "F8 - Включити/виключити живлення в антені\n"
         "F9 - Показати/сховати праву панель в повноекранному режимі\n"
         "F11 - Вхід/вихід повноекранний режим\n"
     );
@@ -436,6 +437,9 @@ bool MainWindow::on_key_press_event(GdkEventKey* event)
             return true;
         case GDK_KEY_F5:
             on_record_clicked();
+            return true;
+        case GDK_KEY_F8:
+            on_power_clicked();
             return true;
         case GDK_KEY_F9:
             if (!m_StatusGrid.is_visible())
